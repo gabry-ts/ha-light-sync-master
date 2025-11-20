@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -61,6 +62,18 @@ class SyncEnableSwitch(SwitchEntity, RestoreEntity):
         self._attr_is_on = default_state
         self._default_state = default_state
         self._entry_id = entry_id
+
+        # device info to group with master light
+        self._attr_device_info = dr.DeviceInfo(
+            identifiers={(DOMAIN, entry_id)},
+            name=f"Light Sync Master - {name}",
+            manufacturer="Light Sync Master",
+            model="Virtual Master Light",
+            sw_version="1.0.0",
+        )
+
+        # icon for the switch
+        self._attr_icon = "mdi:sync"
 
     async def async_added_to_hass(self) -> None:
         """Restore previous state."""
