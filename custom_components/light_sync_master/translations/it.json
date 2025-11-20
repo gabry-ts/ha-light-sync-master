@@ -38,7 +38,8 @@
         "menu_options": {
           "modify_slaves": "Modifica Luci Slave",
           "behavior": "Impostazioni Comportamento Sincronizzazione",
-          "advanced": "Opzioni Avanzate"
+          "advanced": "Opzioni Avanzate",
+          "schedules": "Programmazioni Colore"
         }
       },
       "modify_slaves": {
@@ -72,10 +73,79 @@
           "transition_time": "Tempo per transizioni fluide di colore/luminosità (0 = istantaneo, max 10 secondi)",
           "enable_debug_logging": "Abilita log di debug dettagliati per la risoluzione dei problemi"
         }
+      },
+      "schedules": {
+        "title": "Programmazioni Colore",
+        "menu_options": {
+          "add_schedule": "+ Aggiungi Nuova Programmazione",
+          "edit_schedule": "Modifica Programmazione",
+          "delete_schedule": "Elimina Programmazione"
+        }
+      },
+      "add_schedule": {
+        "title": "Aggiungi Programmazione Colore",
+        "description": "Crea una programmazione colore automatica",
+        "data": {
+          "schedule_name": "Nome Programmazione",
+          "from_type": "Tipo Inizio",
+          "from_time": "Ora Inizio (HH:MM)",
+          "from_offset": "Offset Inizio (minuti)",
+          "to_type": "Tipo Fine",
+          "to_time": "Ora Fine (HH:MM)",
+          "to_offset": "Offset Fine (minuti)",
+          "rgb_color": "Colore",
+          "brightness": "Luminosità",
+          "weekdays": "Giorni Attivi",
+          "enabled": "Abilitata"
+        },
+        "data_description": {
+          "schedule_name": "Nome per questa programmazione",
+          "from_type": "Tipo ora di inizio (time/sunrise/sunset)",
+          "from_time": "Ora di inizio se il tipo è 'time'",
+          "from_offset": "Offset in minuti (+/- 480)",
+          "to_type": "Tipo ora di fine (non usato per i trigger)",
+          "to_time": "Ora di fine se il tipo è 'time'",
+          "to_offset": "Offset ora di fine in minuti",
+          "rgb_color": "Colore RGB da applicare",
+          "brightness": "Livello di luminosità (1-255)",
+          "weekdays": "Giorni in cui la programmazione è attiva",
+          "enabled": "Abilita o disabilita questa programmazione"
+        }
+      },
+      "edit_schedule": {
+        "title": "Seleziona Programmazione da Modificare",
+        "data": {
+          "schedule_index": "Programmazione"
+        }
+      },
+      "edit_schedule_form": {
+        "title": "Modifica Programmazione",
+        "data": {
+          "schedule_name": "Nome Programmazione",
+          "from_type": "Tipo Inizio",
+          "from_time": "Ora Inizio (HH:MM)",
+          "from_offset": "Offset Inizio (minuti)",
+          "to_type": "Tipo Fine",
+          "to_time": "Ora Fine (HH:MM)",
+          "to_offset": "Offset Fine (minuti)",
+          "rgb_color": "Colore",
+          "brightness": "Luminosità",
+          "weekdays": "Giorni Attivi",
+          "enabled": "Abilitata"
+        }
+      },
+      "delete_schedule": {
+        "title": "Elimina Programmazione",
+        "description": "Seleziona una programmazione da eliminare",
+        "data": {
+          "schedule_index": "Programmazione da Eliminare"
+        }
       }
     },
     "error": {
-      "invalid_transition_time": "Il tempo di transizione deve essere compreso tra 0 e 10 secondi"
+      "invalid_transition_time": "Il tempo di transizione deve essere compreso tra 0 e 10 secondi",
+      "time_required": "L'ora è obbligatoria quando il tipo è 'time'",
+      "schedule_overlap": "Questa programmazione si sovrappone con una programmazione esistente negli stessi giorni della settimana"
     }
   },
   "entity": {

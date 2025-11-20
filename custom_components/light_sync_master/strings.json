@@ -38,7 +38,8 @@
         "menu_options": {
           "modify_slaves": "Modify Slave Lights",
           "behavior": "Sync Behavior Settings",
-          "advanced": "Advanced Options"
+          "advanced": "Advanced Options",
+          "schedules": "Color Schedules"
         }
       },
       "modify_slaves": {
@@ -72,10 +73,79 @@
           "transition_time": "Time for smooth color/brightness transitions (0 = instant, max 10 seconds)",
           "enable_debug_logging": "Enable detailed debug logs for troubleshooting"
         }
+      },
+      "schedules": {
+        "title": "Color Schedules",
+        "menu_options": {
+          "add_schedule": "+ Add New Schedule",
+          "edit_schedule": "Edit Schedule",
+          "delete_schedule": "Delete Schedule"
+        }
+      },
+      "add_schedule": {
+        "title": "Add Color Schedule",
+        "description": "Create an automatic color schedule",
+        "data": {
+          "schedule_name": "Schedule Name",
+          "from_type": "From Type",
+          "from_time": "From Time (HH:MM)",
+          "from_offset": "From Offset (minutes)",
+          "to_type": "To Type",
+          "to_time": "To Time (HH:MM)",
+          "to_offset": "To Offset (minutes)",
+          "rgb_color": "Color",
+          "brightness": "Brightness",
+          "weekdays": "Active Days",
+          "enabled": "Enabled"
+        },
+        "data_description": {
+          "schedule_name": "Name for this schedule",
+          "from_type": "Start time type (time/sunrise/sunset)",
+          "from_time": "Start time if type is 'time'",
+          "from_offset": "Offset in minutes (+/- 480)",
+          "to_type": "End time type (not used for triggers)",
+          "to_time": "End time if type is 'time'",
+          "to_offset": "End time offset in minutes",
+          "rgb_color": "RGB color to apply",
+          "brightness": "Brightness level (1-255)",
+          "weekdays": "Days when schedule is active",
+          "enabled": "Enable or disable this schedule"
+        }
+      },
+      "edit_schedule": {
+        "title": "Select Schedule to Edit",
+        "data": {
+          "schedule_index": "Schedule"
+        }
+      },
+      "edit_schedule_form": {
+        "title": "Edit Schedule",
+        "data": {
+          "schedule_name": "Schedule Name",
+          "from_type": "From Type",
+          "from_time": "From Time (HH:MM)",
+          "from_offset": "From Offset (minutes)",
+          "to_type": "To Type",
+          "to_time": "To Time (HH:MM)",
+          "to_offset": "To Offset (minutes)",
+          "rgb_color": "Color",
+          "brightness": "Brightness",
+          "weekdays": "Active Days",
+          "enabled": "Enabled"
+        }
+      },
+      "delete_schedule": {
+        "title": "Delete Schedule",
+        "description": "Select a schedule to delete",
+        "data": {
+          "schedule_index": "Schedule to Delete"
+        }
       }
     },
     "error": {
-      "invalid_transition_time": "Transition time must be between 0 and 10 seconds"
+      "invalid_transition_time": "Transition time must be between 0 and 10 seconds",
+      "time_required": "Time is required when type is 'time'",
+      "schedule_overlap": "This schedule overlaps with an existing schedule on the same weekdays"
     }
   },
   "entity": {

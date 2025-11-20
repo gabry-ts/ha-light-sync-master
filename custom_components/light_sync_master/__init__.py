@@ -1,6 +1,7 @@
 """Light Sync Master integration."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 import logging
 from typing import Any
 
@@ -19,12 +20,25 @@ from homeassistant.const import (
     SERVICE_TURN_ON,
     STATE_ON,
     STATE_UNAVAILABLE,
+    SUN_EVENT_SUNRISE,
+    SUN_EVENT_SUNSET,
 )
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_track_point_in_time, async_track_state_change_event
+from homeassistant.helpers.sun import get_astral_event_next
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_MASTER_NAME,
+    CONF_SCHEDULES,
+    CONF_SCHEDULE_BRIGHTNESS,
+    CONF_SCHEDULE_ENABLED,
+    CONF_SCHEDULE_FROM_OFFSET,
+    CONF_SCHEDULE_FROM_TIME,
+    CONF_SCHEDULE_FROM_TYPE,
+    CONF_SCHEDULE_NAME,
+    CONF_SCHEDULE_RGB_COLOR,
+    CONF_SCHEDULE_WEEKDAYS,
     CONF_SLAVE_ENTITIES,
     CONF_SYNC_ON_ENABLE,
     CONF_TRANSITION_TIME,
@@ -32,6 +46,9 @@ from .const import (
     DEFAULT_TRANSITION_TIME,
     DOMAIN,
     LIGHT_PREFIX,
+    SCHEDULE_TYPE_SUNRISE,
+    SCHEDULE_TYPE_SUNSET,
+    SCHEDULE_TYPE_TIME,
     SWITCH_PREFIX,
 )
 
@@ -86,6 +103,163 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await async_setup_entry(hass, entry)
 
 
+class ScheduleManager:
+    """Manage color schedules and timers."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, master_entity_id: str) -> None:
+        """Initialize schedule manager."""
+        self.hass = hass
+        self.entry = entry
+        self.master_entity_id = master_entity_id
+        self._unsub_timers: list = []
+
+    async def async_setup(self) -> None:
+        """Set up schedules."""
+        schedules = self.entry.options.get(CONF_SCHEDULES, [])
+
+        if not schedules:
+            _LOGGER.debug("No schedules configured for %s", self.master_entity_id)
+            return
+
+        _LOGGER.info("Setting up %d schedule(s) for %s", len(schedules), self.master_entity_id)
+
+        # Schedule all enabled schedules
+        for schedule in schedules:
+            if schedule.get(CONF_SCHEDULE_ENABLED, True):
+                await self._schedule_next_trigger(schedule)
+
+    async def _schedule_next_trigger(self, schedule: dict[str, Any]) -> None:
+        """Schedule the next trigger for a schedule."""
+        now = dt_util.now()
+        today_weekday = now.weekday()
+
+        # Check if schedule should run today
+        weekdays = schedule[CONF_SCHEDULE_WEEKDAYS]
+        if today_weekday not in weekdays:
+            # Find next valid weekday
+            next_trigger = self._get_next_weekday_trigger(schedule, now)
+        else:
+            # Calculate today's trigger time
+            trigger_time = await self._calculate_trigger_time(schedule, now)
+
+            if trigger_time and trigger_time > now:
+                # Schedule for today
+                next_trigger = trigger_time
+            else:
+                # Schedule for next valid day
+                next_trigger = self._get_next_weekday_trigger(schedule, now)
+
+        if next_trigger:
+            _LOGGER.debug(
+                "Scheduling '%s' for %s",
+                schedule.get(CONF_SCHEDULE_NAME, "Unnamed"),
+                next_trigger
+            )
+
+            unsub = async_track_point_in_time(
+                self.hass,
+                lambda _: self.hass.async_create_task(self._handle_trigger(schedule)),
+                next_trigger
+            )
+            self._unsub_timers.append(unsub)
+
+    async def _calculate_trigger_time(self, schedule: dict[str, Any], base_time: datetime) -> datetime | None:
+        """Calculate trigger time for a schedule."""
+        trigger_type = schedule[CONF_SCHEDULE_FROM_TYPE]
+
+        if trigger_type == SCHEDULE_TYPE_TIME:
+            # Fixed time
+            time_str = schedule.get(CONF_SCHEDULE_FROM_TIME)
+            if not time_str:
+                return None
+
+            try:
+                hour, minute = map(int, time_str.split(":"))
+                trigger_time = base_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+                # Apply offset (in minutes)
+                offset = schedule.get(CONF_SCHEDULE_FROM_OFFSET, 0)
+                if offset:
+                    trigger_time += timedelta(minutes=offset)
+
+                return trigger_time
+            except (ValueError, AttributeError) as exc:
+                _LOGGER.error("Invalid time format in schedule: %s", exc)
+                return None
+
+        elif trigger_type in (SCHEDULE_TYPE_SUNRISE, SCHEDULE_TYPE_SUNSET):
+            # Sun-based time
+            event = SUN_EVENT_SUNRISE if trigger_type == SCHEDULE_TYPE_SUNRISE else SUN_EVENT_SUNSET
+
+            try:
+                sun_time = get_astral_event_next(self.hass, event, base_time)
+
+                # Apply offset (in minutes)
+                offset = schedule.get(CONF_SCHEDULE_FROM_OFFSET, 0)
+                if offset:
+                    sun_time += timedelta(minutes=offset)
+
+                return sun_time
+            except Exception as exc:
+                _LOGGER.error("Failed to calculate sun time: %s", exc)
+                return None
+
+        return None
+
+    def _get_next_weekday_trigger(self, schedule: dict[str, Any], start_time: datetime) -> datetime | None:
+        """Get next valid weekday trigger for schedule."""
+        weekdays = schedule[CONF_SCHEDULE_WEEKDAYS]
+
+        # Try next 7 days
+        for days_ahead in range(1, 8):
+            next_date = start_time + timedelta(days=days_ahead)
+            next_weekday = next_date.weekday()
+
+            if next_weekday in weekdays:
+                # Calculate trigger for this day
+                trigger_time = self.hass.loop.run_until_complete(
+                    self._calculate_trigger_time(schedule, next_date)
+                )
+                if trigger_time:
+                    return trigger_time
+
+        return None
+
+    async def _handle_trigger(self, schedule: dict[str, Any]) -> None:
+        """Handle schedule trigger - apply color to master light."""
+        schedule_name = schedule.get(CONF_SCHEDULE_NAME, "Unnamed")
+        _LOGGER.info("Triggering schedule '%s'", schedule_name)
+
+        # Apply color to master light
+        service_data = {
+            ATTR_ENTITY_ID: self.master_entity_id,
+            ATTR_RGB_COLOR: schedule[CONF_SCHEDULE_RGB_COLOR],
+            ATTR_BRIGHTNESS: schedule[CONF_SCHEDULE_BRIGHTNESS],
+            ATTR_TRANSITION: 2,  # 2 second smooth transition
+        }
+
+        try:
+            await self.hass.services.async_call(
+                LIGHT_DOMAIN,
+                SERVICE_TURN_ON,
+                service_data,
+                blocking=False
+            )
+            _LOGGER.debug("Applied schedule '%s' to %s", schedule_name, self.master_entity_id)
+        except Exception as exc:
+            _LOGGER.error("Failed to apply schedule '%s': %s", schedule_name, exc)
+
+        # Re-schedule for next occurrence
+        await self._schedule_next_trigger(schedule)
+
+    def cleanup(self) -> None:
+        """Clean up timers."""
+        for unsub in self._unsub_timers:
+            unsub()
+        self._unsub_timers.clear()
+        _LOGGER.debug("Cleaned up schedule timers for %s", self.master_entity_id)
+
+
 class LightSyncCoordinator:
     """Coordinator to manage sync logic and listeners."""
 
@@ -101,6 +275,9 @@ class LightSyncCoordinator:
         sanitized_name = name.lower().replace(" ", "_")
         self.master_entity_id = f"light.{LIGHT_PREFIX}_{sanitized_name}"
         self.switch_entity_id = f"switch.{SWITCH_PREFIX}_{sanitized_name}"
+
+        # schedule manager
+        self.schedule_manager = ScheduleManager(hass, entry, self.master_entity_id)
 
     async def async_setup(self) -> bool:
         """Set up the coordinator."""
@@ -122,6 +299,9 @@ class LightSyncCoordinator:
                 self._handle_slave_state_change
             )
             self._unsub_slaves.append(unsub)
+
+        # setup schedule manager
+        await self.schedule_manager.async_setup()
 
         _LOGGER.info(
             "Coordinator setup complete: master=%s, slaves=%d",
@@ -332,5 +512,8 @@ class LightSyncCoordinator:
         for unsub in self._unsub_slaves:
             unsub()
         self._unsub_slaves.clear()
+
+        # cleanup schedule manager
+        self.schedule_manager.cleanup()
 
         _LOGGER.info("Coordinator cleanup complete for %s", self.master_entity_id)

@@ -150,6 +150,7 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
+        self._schedule_index: int | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -274,21 +275,15 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
         """Manage color schedules."""
         schedules = self.config_entry.options.get(CONF_SCHEDULES, [])
 
-        # Create menu options for each schedule + add new
-        menu_options = {}
+        # Build menu with fixed options
+        menu_options = ["add_schedule"]
 
         if schedules:
-            for idx, schedule in enumerate(schedules):
-                enabled_icon = "✓" if schedule.get(CONF_SCHEDULE_ENABLED, True) else "✗"
-                menu_options[f"edit_schedule_{idx}"] = (
-                    f"{enabled_icon} {schedule.get(CONF_SCHEDULE_NAME, f'Schedule {idx+1}')}"
-                )
-
-        menu_options["add_schedule"] = "+ Add New Schedule"
+            menu_options.extend(["edit_schedule", "delete_schedule"])
 
         return self.async_show_menu(
             step_id="schedules",
-            menu_options=list(menu_options.keys()),
+            menu_options=menu_options,
         )
 
     async def async_step_add_schedule(
@@ -404,3 +399,149 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
                 return True
         
         return False
+
+    async def async_step_edit_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Select which schedule to edit."""
+        schedules = self.config_entry.options.get(CONF_SCHEDULES, [])
+
+        if user_input is not None:
+            # User selected a schedule to edit
+            self._schedule_index = int(user_input["schedule_index"])
+            return await self.async_step_edit_schedule_form()
+
+        # Build schedule options
+        schedule_options = {
+            str(idx): f"{schedule.get(CONF_SCHEDULE_NAME, f'Schedule {idx+1}')}"
+            for idx, schedule in enumerate(schedules)
+        }
+
+        return self.async_show_form(
+            step_id="edit_schedule",
+            data_schema=vol.Schema({
+                vol.Required("schedule_index"): vol.In(schedule_options),
+            }),
+        )
+
+    async def async_step_edit_schedule_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Edit selected schedule."""
+        schedules = self.config_entry.options.get(CONF_SCHEDULES, [])
+        schedule = schedules[self._schedule_index]
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            # Update schedule
+            updated_schedule = {
+                CONF_SCHEDULE_NAME: user_input[CONF_SCHEDULE_NAME],
+                CONF_SCHEDULE_FROM_TYPE: user_input[CONF_SCHEDULE_FROM_TYPE],
+                CONF_SCHEDULE_FROM_TIME: user_input.get(CONF_SCHEDULE_FROM_TIME),
+                CONF_SCHEDULE_FROM_OFFSET: user_input.get(CONF_SCHEDULE_FROM_OFFSET, 0),
+                CONF_SCHEDULE_TO_TYPE: user_input[CONF_SCHEDULE_TO_TYPE],
+                CONF_SCHEDULE_TO_TIME: user_input.get(CONF_SCHEDULE_TO_TIME),
+                CONF_SCHEDULE_TO_OFFSET: user_input.get(CONF_SCHEDULE_TO_OFFSET, 0),
+                CONF_SCHEDULE_RGB_COLOR: user_input[CONF_SCHEDULE_RGB_COLOR],
+                CONF_SCHEDULE_BRIGHTNESS: user_input[CONF_SCHEDULE_BRIGHTNESS],
+                CONF_SCHEDULE_WEEKDAYS: user_input[CONF_SCHEDULE_WEEKDAYS],
+                CONF_SCHEDULE_ENABLED: user_input.get(CONF_SCHEDULE_ENABLED, True),
+            }
+
+            # Validate times
+            if updated_schedule[CONF_SCHEDULE_FROM_TYPE] == SCHEDULE_TYPE_TIME:
+                if not updated_schedule[CONF_SCHEDULE_FROM_TIME]:
+                    errors[CONF_SCHEDULE_FROM_TIME] = "time_required"
+            
+            if updated_schedule[CONF_SCHEDULE_TO_TYPE] == SCHEDULE_TYPE_TIME:
+                if not updated_schedule[CONF_SCHEDULE_TO_TIME]:
+                    errors[CONF_SCHEDULE_TO_TIME] = "time_required"
+
+            if not errors:
+                # Check overlaps (excluding current schedule)
+                other_schedules = [s for i, s in enumerate(schedules) if i != self._schedule_index]
+                if self._check_schedule_overlap(updated_schedule, other_schedules):
+                    errors["base"] = "schedule_overlap"
+
+            if not errors:
+                # Update schedules list
+                schedules[self._schedule_index] = updated_schedule
+                new_options = {**self.config_entry.options}
+                new_options[CONF_SCHEDULES] = schedules
+                
+                self._schedule_index = None
+                return self.async_create_entry(title="", data=new_options)
+
+        # Show form with current values
+        return self.async_show_form(
+            step_id="edit_schedule_form",
+            data_schema=vol.Schema({
+                vol.Required(CONF_SCHEDULE_NAME, default=schedule.get(CONF_SCHEDULE_NAME, "")): cv.string,
+                vol.Required(CONF_SCHEDULE_FROM_TYPE, default=schedule.get(CONF_SCHEDULE_FROM_TYPE, SCHEDULE_TYPE_TIME)): vol.In({
+                    SCHEDULE_TYPE_TIME: "Time",
+                    SCHEDULE_TYPE_SUNRISE: "Sunrise",
+                    SCHEDULE_TYPE_SUNSET: "Sunset",
+                }),
+                vol.Optional(CONF_SCHEDULE_FROM_TIME, default=schedule.get(CONF_SCHEDULE_FROM_TIME)): cv.string,
+                vol.Optional(CONF_SCHEDULE_FROM_OFFSET, default=schedule.get(CONF_SCHEDULE_FROM_OFFSET, 0)): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=-480, max=480)
+                ),
+                vol.Required(CONF_SCHEDULE_TO_TYPE, default=schedule.get(CONF_SCHEDULE_TO_TYPE, SCHEDULE_TYPE_TIME)): vol.In({
+                    SCHEDULE_TYPE_TIME: "Time",
+                    SCHEDULE_TYPE_SUNRISE: "Sunrise",
+                    SCHEDULE_TYPE_SUNSET: "Sunset",
+                }),
+                vol.Optional(CONF_SCHEDULE_TO_TIME, default=schedule.get(CONF_SCHEDULE_TO_TIME)): cv.string,
+                vol.Optional(CONF_SCHEDULE_TO_OFFSET, default=schedule.get(CONF_SCHEDULE_TO_OFFSET, 0)): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=-480, max=480)
+                ),
+                vol.Required(CONF_SCHEDULE_RGB_COLOR, default=schedule.get(CONF_SCHEDULE_RGB_COLOR, [255, 255, 255])): selector.ColorRGBSelector(),
+                vol.Required(CONF_SCHEDULE_BRIGHTNESS, default=schedule.get(CONF_SCHEDULE_BRIGHTNESS, 255)): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=1, max=255)
+                ),
+                vol.Required(CONF_SCHEDULE_WEEKDAYS, default=schedule.get(CONF_SCHEDULE_WEEKDAYS, [0,1,2,3,4,5,6])): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": str(day), "label": WEEKDAYS[day].capitalize()}
+                            for day in range(7)
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+                vol.Required(CONF_SCHEDULE_ENABLED, default=schedule.get(CONF_SCHEDULE_ENABLED, True)): cv.boolean,
+            }),
+            errors=errors,
+        )
+
+    async def async_step_delete_schedule(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Delete a schedule."""
+        schedules = self.config_entry.options.get(CONF_SCHEDULES, [])
+
+        if user_input is not None:
+            # User confirmed deletion
+            idx_to_delete = int(user_input["schedule_index"])
+            schedules.pop(idx_to_delete)
+            
+            new_options = {**self.config_entry.options}
+            new_options[CONF_SCHEDULES] = schedules
+            
+            return self.async_create_entry(title="", data=new_options)
+
+        # Build schedule options
+        schedule_options = {
+            str(idx): f"{schedule.get(CONF_SCHEDULE_NAME, f'Schedule {idx+1}')}"
+            for idx, schedule in enumerate(schedules)
+        }
+
+        return self.async_show_form(
+            step_id="delete_schedule",
+            data_schema=vol.Schema({
+                vol.Required("schedule_index"): vol.In(schedule_options),
+            }),
+        )
