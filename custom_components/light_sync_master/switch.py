@@ -13,7 +13,9 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     CONF_MASTER_NAME,
     CONF_SYNC_ENABLED_DEFAULT,
+    CONF_SYNC_ON_ENABLE,
     DEFAULT_SYNC_ENABLED,
+    DEFAULT_SYNC_ON_ENABLE,
     DOMAIN,
     SWITCH_PREFIX,
 )
@@ -86,10 +88,18 @@ class SyncEnableSwitch(SwitchEntity, RestoreEntity):
 
         _LOGGER.info("Sync switch %s turned on", self.entity_id)
 
-        # trigger immediate sync via coordinator
+        # check if immediate sync is enabled
         coordinator = self.hass.data[DOMAIN].get(self._entry_id)
         if coordinator:
-            await coordinator.async_sync_all_on_slaves()
+            sync_on_enable = coordinator.entry.options.get(
+                CONF_SYNC_ON_ENABLE,
+                DEFAULT_SYNC_ON_ENABLE
+            )
+            if sync_on_enable:
+                _LOGGER.debug("Sync on enable is active, syncing all ON slaves")
+                await coordinator.async_sync_all_on_slaves()
+            else:
+                _LOGGER.debug("Sync on enable is disabled, skipping immediate sync")
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off sync."""
