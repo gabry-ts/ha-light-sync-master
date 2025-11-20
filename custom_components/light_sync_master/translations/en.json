@@ -1,0 +1,88 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Light Sync Master",
+        "description": "Create a virtual master light that will control multiple slave lights",
+        "data": {
+          "name": "Name"
+        },
+        "data_description": {
+          "name": "A virtual master light will be created with this name"
+        }
+      },
+      "select_slaves": {
+        "title": "Select Slave Lights",
+        "description": "Choose which lights will follow the master light '{master_name}'",
+        "data": {
+          "slave_entities": "Slave Lights"
+        },
+        "data_description": {
+          "slave_entities": "Select lights that will synchronize with the master light"
+        }
+      }
+    },
+    "error": {
+      "no_lights_available": "No light entities available in your Home Assistant",
+      "invalid_name": "Invalid name provided",
+      "name_already_exists": "A master light with this name already exists"
+    },
+    "abort": {
+      "already_configured": "This master light is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Light Sync Master Options",
+        "menu_options": {
+          "modify_slaves": "Modify Slave Lights",
+          "behavior": "Sync Behavior Settings",
+          "advanced": "Advanced Options"
+        }
+      },
+      "modify_slaves": {
+        "title": "Modify Slave Lights",
+        "description": "Currently: {count} lights configured",
+        "data": {
+          "slave_entities": "Slave Lights"
+        },
+        "data_description": {
+          "slave_entities": "Select lights that will synchronize with the master light"
+        }
+      },
+      "behavior": {
+        "title": "Sync Behavior Settings",
+        "data": {
+          "sync_enabled_default": "Default sync state on restart",
+          "sync_on_enable": "Immediately sync all ON slaves when sync is enabled"
+        },
+        "data_description": {
+          "sync_enabled_default": "Enable synchronization by default when Home Assistant restarts",
+          "sync_on_enable": "When turning on the sync switch, immediately update all ON slaves to match the master"
+        }
+      },
+      "advanced": {
+        "title": "Advanced Options",
+        "data": {
+          "transition_time": "Transition time (seconds)",
+          "enable_debug_logging": "Enable detailed logging"
+        },
+        "data_description": {
+          "transition_time": "Time for smooth color/brightness transitions (0 = instant, max 10 seconds)",
+          "enable_debug_logging": "Enable detailed debug logs for troubleshooting"
+        }
+      }
+    },
+    "error": {
+      "invalid_transition_time": "Transition time must be between 0 and 10 seconds"
+    }
+  },
+  "entity": {
+    "switch": {
+      "sync_enabled": {
+        "name": "{name} Sync"
+      }
+    }
+  }
+}

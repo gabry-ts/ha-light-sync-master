@@ -1,0 +1,88 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura Light Sync Master",
+        "description": "Crea una luce master virtuale che controllerà più luci slave",
+        "data": {
+          "name": "Nome"
+        },
+        "data_description": {
+          "name": "Verrà creata una luce master virtuale con questo nome"
+        }
+      },
+      "select_slaves": {
+        "title": "Seleziona Luci Slave",
+        "description": "Scegli quali luci seguiranno la luce master '{master_name}'",
+        "data": {
+          "slave_entities": "Luci Slave"
+        },
+        "data_description": {
+          "slave_entities": "Seleziona le luci che si sincronizzeranno con la luce master"
+        }
+      }
+    },
+    "error": {
+      "no_lights_available": "Nessuna entità luce disponibile nel tuo Home Assistant",
+      "invalid_name": "Nome non valido",
+      "name_already_exists": "Una luce master con questo nome esiste già"
+    },
+    "abort": {
+      "already_configured": "Questa luce master è già configurata"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Light Sync Master",
+        "menu_options": {
+          "modify_slaves": "Modifica Luci Slave",
+          "behavior": "Impostazioni Comportamento Sincronizzazione",
+          "advanced": "Opzioni Avanzate"
+        }
+      },
+      "modify_slaves": {
+        "title": "Modifica Luci Slave",
+        "description": "Attualmente: {count} luci configurate",
+        "data": {
+          "slave_entities": "Luci Slave"
+        },
+        "data_description": {
+          "slave_entities": "Seleziona le luci che si sincronizzeranno con la luce master"
+        }
+      },
+      "behavior": {
+        "title": "Impostazioni Comportamento Sincronizzazione",
+        "data": {
+          "sync_enabled_default": "Stato predefinito sincronizzazione al riavvio",
+          "sync_on_enable": "Sincronizza immediatamente tutte le luci slave ON quando la sincronizzazione viene attivata"
+        },
+        "data_description": {
+          "sync_enabled_default": "Abilita la sincronizzazione per impostazione predefinita quando Home Assistant si riavvia",
+          "sync_on_enable": "Quando si attiva l'interruttore di sincronizzazione, aggiorna immediatamente tutte le luci slave accese per corrispondere al master"
+        }
+      },
+      "advanced": {
+        "title": "Opzioni Avanzate",
+        "data": {
+          "transition_time": "Tempo di transizione (secondi)",
+          "enable_debug_logging": "Abilita logging dettagliato"
+        },
+        "data_description": {
+          "transition_time": "Tempo per transizioni fluide di colore/luminosità (0 = istantaneo, max 10 secondi)",
+          "enable_debug_logging": "Abilita log di debug dettagliati per la risoluzione dei problemi"
+        }
+      }
+    },
+    "error": {
+      "invalid_transition_time": "Il tempo di transizione deve essere compreso tra 0 e 10 secondi"
+    }
+  },
+  "entity": {
+    "switch": {
+      "sync_enabled": {
+        "name": "Sincronizzazione {name}"
+      }
+    }
+  }
+}

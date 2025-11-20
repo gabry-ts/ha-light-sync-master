@@ -1,0 +1,12 @@
+{
+  "domain": "light_sync_master",
+  "name": "Light Sync Master",
+  "codeowners": ["@gabriele"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/gabry-ts/ha-light-sync-master",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/gabry-ts/ha-light-sync-master/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
