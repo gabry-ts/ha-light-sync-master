@@ -1,0 +1,41 @@
+{
+  "name": "light-sync-master-frontend",
+  "version": "2.0.0",
+  "description": "Frontend components for Light Sync Master Home Assistant integration",
+  "type": "module",
+  "main": "dist/light-sync-panel.js",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write 'src/**/*.ts'"
+  },
+  "keywords": [
+    "home-assistant",
+    "custom-panel",
+    "lovelace-card",
+    "light-sync"
+  ],
+  "author": "Light Sync Master",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "rollup": "^4.12.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "lit": "^3.1.2",
+    "chart.js": "^4.4.1",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^3.3.1"
+  }
+}

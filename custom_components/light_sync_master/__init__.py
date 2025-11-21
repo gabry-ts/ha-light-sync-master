@@ -3,8 +3,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import logging
+import os
 from typing import Any
 
+from homeassistant.components.frontend import async_register_built_in_panel
+from homeassistant.components.http.static import StaticPathConfig
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
@@ -28,6 +31,7 @@ from homeassistant.helpers.event import async_track_point_in_time, async_track_s
 from homeassistant.helpers.sun import get_astral_event_next
 from homeassistant.util import dt as dt_util
 
+from .api import setup_api
 from .const import (
     CONF_MASTER_NAME,
     CONF_SCHEDULES,
@@ -55,6 +59,52 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["light", "switch"]
+
+# Track if global setup has been done
+_SETUP_DONE = False
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the Light Sync Master component (called once)."""
+    global _SETUP_DONE
+
+    if _SETUP_DONE:
+        return True
+
+    _LOGGER.info("Setting up Light Sync Master component")
+
+    # Setup API views
+    setup_api(hass)
+
+    # Register static files for frontend
+    www_path = os.path.join(os.path.dirname(__file__), "www")
+    if os.path.exists(www_path):
+        await hass.http.async_register_static_paths([
+            StaticPathConfig(f"/{DOMAIN}", www_path, True)
+        ])
+        _LOGGER.info("Registered static files at /%s", DOMAIN)
+
+    # Register custom panel
+    await async_register_built_in_panel(
+        hass,
+        component_name="custom",
+        sidebar_title="Light Sync",
+        sidebar_icon="mdi:lightbulb-group",
+        frontend_url_path="light-sync",
+        config={
+            "_panel_custom": {
+                "name": "light-sync-panel",
+                "embed_iframe": False,
+                "trust_external": False,
+                "js_url": f"/{DOMAIN}/light-sync-panel.js",
+            }
+        },
+        require_admin=False,
+    )
+    _LOGGER.info("Registered Light Sync Master panel")
+
+    _SETUP_DONE = True
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
