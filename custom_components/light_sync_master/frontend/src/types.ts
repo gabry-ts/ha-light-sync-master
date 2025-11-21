@@ -26,7 +26,7 @@ export interface HomeAssistant {
   defaultPanel: string;
   moreInfoEntityId: string | null;
   user?: any;
-  hassUrl(path?): string;
+  hassUrl(path?: string): string;
   callService(domain: string, service: string, data?: any, target?: any): Promise<any>;
   callApi<T>(method: string, path: string, data?: any): Promise<T>;
 }

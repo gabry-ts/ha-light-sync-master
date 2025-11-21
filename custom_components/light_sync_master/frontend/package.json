@@ -2,6 +2,7 @@
   "name": "light-sync-master-frontend",
   "version": "2.0.0",
   "description": "Frontend components for Light Sync Master Home Assistant integration",
+  "type": "module",
   "main": "dist/light-sync-panel.js",
   "scripts": {
     "build": "rollup -c",

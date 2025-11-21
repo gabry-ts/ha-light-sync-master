@@ -19,12 +19,12 @@ export class LightSyncCard extends LitElement {
     }
 
     this._config = {
-      type: 'custom:light-sync-card',
       layout: 'medium',
       show_brightness: true,
       show_next_schedule: true,
       show_slave_count: true,
-      ...config
+      ...config,
+      type: 'custom:light-sync-card'
     };
   }
 
