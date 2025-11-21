@@ -7,6 +7,7 @@ import os
 from typing import Any
 
 from homeassistant.components.frontend import async_register_built_in_panel
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
@@ -79,7 +80,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     www_path = os.path.join(os.path.dirname(__file__), "www")
     if os.path.exists(www_path):
         await hass.http.async_register_static_paths([
-            {"url_path": f"/{DOMAIN}", "path": www_path, "cache_headers": True}
+            StaticPathConfig(f"/{DOMAIN}", www_path, True)
         ])
         _LOGGER.info("Registered static files at /%s", DOMAIN)
 
