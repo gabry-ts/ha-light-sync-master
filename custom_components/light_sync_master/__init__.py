@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.components.frontend import async_register_built_in_panel
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
-    ATTR_COLOR_TEMP,
+    ATTR_COLOR_TEMP_KELVIN,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
     ATTR_TRANSITION,
@@ -78,11 +78,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Register static files for frontend
     www_path = os.path.join(os.path.dirname(__file__), "www")
     if os.path.exists(www_path):
-        hass.http.register_static_path(
-            f"/{DOMAIN}",
-            www_path,
-            cache_headers=True
-        )
+        await hass.http.async_register_static_paths([
+            {"url_path": f"/{DOMAIN}", "path": www_path, "cache_headers": True}
+        ])
         _LOGGER.info("Registered static files at /%s", DOMAIN)
 
     # Register custom panel
@@ -425,7 +423,7 @@ class LightSyncCoordinator:
             ATTR_RGB_COLOR,
             ATTR_HS_COLOR,
             ATTR_XY_COLOR,
-            ATTR_COLOR_TEMP,
+            ATTR_COLOR_TEMP_KELVIN,
         ]
 
         for attr in attrs_to_check:
@@ -543,8 +541,8 @@ class LightSyncCoordinator:
             service_data[ATTR_HS_COLOR] = master_state.attributes[ATTR_HS_COLOR]
         elif ATTR_XY_COLOR in master_state.attributes:
             service_data[ATTR_XY_COLOR] = master_state.attributes[ATTR_XY_COLOR]
-        elif ATTR_COLOR_TEMP in master_state.attributes:
-            service_data[ATTR_COLOR_TEMP] = master_state.attributes[ATTR_COLOR_TEMP]
+        elif ATTR_COLOR_TEMP_KELVIN in master_state.attributes:
+            service_data[ATTR_COLOR_TEMP_KELVIN] = master_state.attributes[ATTR_COLOR_TEMP_KELVIN]
 
         return service_data
 

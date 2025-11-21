@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
-    ATTR_COLOR_TEMP,
+    ATTR_COLOR_TEMP_KELVIN,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
     ATTR_XY_COLOR,
@@ -96,8 +96,8 @@ class VirtualMasterLight(LightEntity, RestoreEntity):
             if ATTR_XY_COLOR in last_state.attributes:
                 self._attr_xy_color = tuple(last_state.attributes[ATTR_XY_COLOR])
                 self._attr_color_mode = ColorMode.XY
-            if ATTR_COLOR_TEMP in last_state.attributes:
-                self._attr_color_temp = last_state.attributes[ATTR_COLOR_TEMP]
+            if ATTR_COLOR_TEMP_KELVIN in last_state.attributes:
+                self._attr_color_temp = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
                 self._attr_color_mode = ColorMode.COLOR_TEMP
 
             _LOGGER.debug(
@@ -131,8 +131,8 @@ class VirtualMasterLight(LightEntity, RestoreEntity):
             self._attr_color_temp = None
             self._attr_rgb_color = None
             self._attr_hs_color = None
-        elif ATTR_COLOR_TEMP in kwargs:
-            self._attr_color_temp = kwargs[ATTR_COLOR_TEMP]
+        elif ATTR_COLOR_TEMP_KELVIN in kwargs:
+            self._attr_color_temp = kwargs[ATTR_COLOR_TEMP_KELVIN]
             self._attr_color_mode = ColorMode.COLOR_TEMP
             self._attr_rgb_color = None
             self._attr_hs_color = None
