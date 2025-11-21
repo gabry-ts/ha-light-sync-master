@@ -7,7 +7,6 @@ import os
 from typing import Any
 
 from homeassistant.components.frontend import async_register_built_in_panel
-from homeassistant.components.http.static import StaticPathConfig
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
@@ -79,9 +78,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Register static files for frontend
     www_path = os.path.join(os.path.dirname(__file__), "www")
     if os.path.exists(www_path):
-        await hass.http.async_register_static_paths([
-            StaticPathConfig(f"/{DOMAIN}", www_path, True)
-        ])
+        hass.http.register_static_path(
+            f"/{DOMAIN}",
+            www_path,
+            cache_headers=True
+        )
         _LOGGER.info("Registered static files at /%s", DOMAIN)
 
     # Register custom panel
