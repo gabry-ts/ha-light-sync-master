@@ -295,7 +295,7 @@ class LightSyncCoordinator:
         service_data = {}
 
         # get transition time from options
-        transition_time = self.entry.options.get(
+        transition_time = (self.entry.options or {}).get(
             CONF_TRANSITION_TIME,
             DEFAULT_TRANSITION_TIME
         )
