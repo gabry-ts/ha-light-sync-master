@@ -33,7 +33,7 @@ async def async_setup_entry(
     name = entry.data[CONF_MASTER_NAME]
     entity_id = f"switch.{SWITCH_PREFIX}_{name.lower().replace(' ', '_')}"
 
-    default_state = entry.options.get(
+    default_state = (entry.options or {}).get(
         CONF_SYNC_ENABLED_DEFAULT,
         DEFAULT_SYNC_ENABLED
     )
@@ -104,7 +104,7 @@ class SyncEnableSwitch(SwitchEntity, RestoreEntity):
         # check if immediate sync is enabled
         coordinator = self.hass.data[DOMAIN].get(self._entry_id)
         if coordinator:
-            sync_on_enable = coordinator.entry.options.get(
+            sync_on_enable = (coordinator.entry.options or {}).get(
                 CONF_SYNC_ON_ENABLE,
                 DEFAULT_SYNC_ON_ENABLE
             )

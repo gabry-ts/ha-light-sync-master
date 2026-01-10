@@ -198,14 +198,14 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_SYNC_ENABLED_DEFAULT,
-                    default=self.config_entry.options.get(
+                    default=(self.config_entry.options or {}).get(
                         CONF_SYNC_ENABLED_DEFAULT,
                         DEFAULT_SYNC_ENABLED
                     )
                 ): cv.boolean,
                 vol.Required(
                     CONF_SYNC_ON_ENABLE,
-                    default=self.config_entry.options.get(
+                    default=(self.config_entry.options or {}).get(
                         CONF_SYNC_ON_ENABLE,
                         DEFAULT_SYNC_ON_ENABLE
                     )
@@ -233,7 +233,7 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_TRANSITION_TIME,
-                    default=self.config_entry.options.get(
+                    default=(self.config_entry.options or {}).get(
                         CONF_TRANSITION_TIME,
                         DEFAULT_TRANSITION_TIME
                     )
@@ -243,7 +243,7 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Required(
                     CONF_ENABLE_DEBUG_LOGGING,
-                    default=self.config_entry.options.get(
+                    default=(self.config_entry.options or {}).get(
                         CONF_ENABLE_DEBUG_LOGGING,
                         False
                     )
