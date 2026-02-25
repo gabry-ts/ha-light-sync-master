@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
-    ATTR_COLOR_TEMP,
+    ATTR_COLOR_TEMP_KELVIN_KELVIN,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
     ATTR_TRANSITION,
@@ -194,7 +194,7 @@ class LightSyncCoordinator:
             ATTR_RGB_COLOR,
             ATTR_HS_COLOR,
             ATTR_XY_COLOR,
-            ATTR_COLOR_TEMP,
+            ATTR_COLOR_TEMP_KELVIN_KELVIN,
         ]
 
         for attr in attrs_to_check:
@@ -312,8 +312,8 @@ class LightSyncCoordinator:
             service_data[ATTR_HS_COLOR] = master_state.attributes[ATTR_HS_COLOR]
         elif ATTR_XY_COLOR in master_state.attributes:
             service_data[ATTR_XY_COLOR] = master_state.attributes[ATTR_XY_COLOR]
-        elif ATTR_COLOR_TEMP in master_state.attributes:
-            service_data[ATTR_COLOR_TEMP] = master_state.attributes[ATTR_COLOR_TEMP]
+        elif ATTR_COLOR_TEMP_KELVIN in master_state.attributes:
+            service_data[ATTR_COLOR_TEMP_KELVIN] = master_state.attributes[ATTR_COLOR_TEMP_KELVIN]
 
         return service_data
 
