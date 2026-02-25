@@ -1,7 +1,7 @@
 {
   "domain": "light_sync_master",
   "name": "Light Sync Master",
-  "codeowners": ["@gabriele"],
+  "codeowners": ["@gabry-ts"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/gabry-ts/ha-light-sync-master",

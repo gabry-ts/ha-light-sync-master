@@ -1,0 +1,33 @@
+name: Bug Report
+description: Report a bug with Light Sync Master
+labels: ["bug"]
+body:
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Home Assistant version
+      placeholder: "2024.12.0"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Integration version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Relevant log output
+      description: Paste any relevant logs (enable debug logging first).
+      render: text
