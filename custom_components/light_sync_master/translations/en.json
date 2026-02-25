@@ -13,7 +13,7 @@
       },
       "select_slaves": {
         "title": "Select Slave Lights",
-        "description": "Choose which lights will follow the master light '{master_name}'",
+        "description": "Choose which lights will follow the master light {master_name}",
         "data": {
           "slave_entities": "Slave Lights"
         },

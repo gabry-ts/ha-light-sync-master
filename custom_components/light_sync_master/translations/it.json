@@ -13,7 +13,7 @@
       },
       "select_slaves": {
         "title": "Seleziona Luci Slave",
-        "description": "Scegli quali luci seguiranno la luce master '{master_name}'",
+        "description": "Scegli quali luci seguiranno la luce master {master_name}",
         "data": {
           "slave_entities": "Luci Slave"
         },
