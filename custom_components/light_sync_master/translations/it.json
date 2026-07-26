@@ -55,11 +55,13 @@
         "title": "Impostazioni Comportamento Sincronizzazione",
         "data": {
           "sync_enabled_default": "Stato predefinito sincronizzazione al riavvio",
-          "sync_on_enable": "Sincronizza immediatamente tutte le luci slave ON quando la sincronizzazione viene attivata"
+          "sync_on_enable": "Sincronizza immediatamente tutte le luci slave ON quando la sincronizzazione viene attivata",
+          "per_area_toggles": "Crea un interruttore \"segui master\" per ogni stanza"
         },
         "data_description": {
           "sync_enabled_default": "Abilita la sincronizzazione per impostazione predefinita quando Home Assistant si riavvia",
-          "sync_on_enable": "Quando si attiva l'interruttore di sincronizzazione, aggiorna immediatamente tutte le luci slave accese per corrispondere al master"
+          "sync_on_enable": "Quando si attiva l'interruttore di sincronizzazione, aggiorna immediatamente tutte le luci slave accese per corrispondere al master",
+          "per_area_toggles": "Aggiunge un interruttore per ogni stanza, cosi puoi sganciare una stanza dal master lasciandola accesa"
         }
       },
       "advanced": {

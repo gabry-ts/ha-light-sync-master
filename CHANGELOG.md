@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-26
+
+### Added
+- Per-area "follow master" switches: one switch per area (`switch.<master>_follow_<area>`) so a room can be detached from the master while its lights stay on. Can be disabled via the new "Sync Behavior" option.
+- Options changes now reload the entry automatically (`OptionsFlowWithReload`).
+
+### Fixed
+- Master light failed to be added on restart when its last state was `color_temp` (HA reports inactive color attributes as `None`, causing `TypeError: 'NoneType' object is not iterable`). State is now restored from the stored `color_mode` and only ever within supported color modes.
+- Options page raised `AttributeError` on HA 2024.11+ because `OptionsFlow.config_entry` became a read-only property; removed the manual assignment.
+- Editing options in one sub-step (behavior/advanced) no longer wipes the values set in the other; modifying slaves no longer resets all options.
+
+[1.2.0]: https://github.com/gabry-ts/ha-light-sync-master/releases/tag/v1.2.0
+
 ## [1.1.0] - 2026-02-26
 
 ### Fixed
