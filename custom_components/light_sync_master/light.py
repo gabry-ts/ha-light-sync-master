@@ -6,6 +6,7 @@ from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
+    ATTR_COLOR_MODE,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
@@ -83,29 +84,41 @@ class VirtualMasterLight(LightEntity, RestoreEntity):
         """Restore previous state."""
         await super().async_added_to_hass()
 
-        if (last_state := await self.async_get_last_state()) is not None:
-            # restore attributes but always keep is_on = True
-            if ATTR_BRIGHTNESS in last_state.attributes:
-                self._attr_brightness = last_state.attributes[ATTR_BRIGHTNESS]
-            if ATTR_RGB_COLOR in last_state.attributes:
-                self._attr_rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
-                self._attr_color_mode = ColorMode.RGB
-            if ATTR_HS_COLOR in last_state.attributes:
-                self._attr_hs_color = tuple(last_state.attributes[ATTR_HS_COLOR])
-                self._attr_color_mode = ColorMode.HS
-            if ATTR_XY_COLOR in last_state.attributes:
-                self._attr_xy_color = tuple(last_state.attributes[ATTR_XY_COLOR])
-                self._attr_color_mode = ColorMode.XY
-            if ATTR_COLOR_TEMP_KELVIN in last_state.attributes:
-                self._attr_color_temp_kelvin = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
-                self._attr_color_mode = ColorMode.COLOR_TEMP
+        if (last_state := await self.async_get_last_state()) is None:
+            return
 
-            _LOGGER.debug(
-                "Restored master light %s state: brightness=%s, color_mode=%s",
-                self.entity_id,
-                self._attr_brightness,
-                self._attr_color_mode,
-            )
+        # Restore brightness. Note: HA keeps the key present even when the
+        # value is None, so guard on the value, not on key membership.
+        if (brightness := last_state.attributes.get(ATTR_BRIGHTNESS)) is not None:
+            self._attr_brightness = brightness
+
+        # Restore color from the stored color_mode. HA reports the *inactive*
+        # color attributes (rgb/hs/xy vs color_temp) as None, so restoring by
+        # key presence crashed on tuple(None) and could also land on a mode
+        # outside supported_color_modes. We only ever expose RGB / COLOR_TEMP.
+        color_mode = last_state.attributes.get(ATTR_COLOR_MODE)
+        color_temp = last_state.attributes.get(ATTR_COLOR_TEMP_KELVIN)
+        rgb_color = last_state.attributes.get(ATTR_RGB_COLOR)
+
+        if color_mode == ColorMode.COLOR_TEMP and color_temp is not None:
+            self._attr_color_mode = ColorMode.COLOR_TEMP
+            self._attr_color_temp_kelvin = color_temp
+            self._attr_rgb_color = None
+            self._attr_hs_color = None
+            self._attr_xy_color = None
+        elif rgb_color is not None:
+            self._attr_color_mode = ColorMode.RGB
+            self._attr_rgb_color = tuple(rgb_color)
+            self._attr_color_temp_kelvin = None
+            self._attr_hs_color = None
+            self._attr_xy_color = None
+
+        _LOGGER.debug(
+            "Restored master light %s state: brightness=%s, color_mode=%s",
+            self.entity_id,
+            self._attr_brightness,
+            self._attr_color_mode,
+        )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on light (update attributes)."""

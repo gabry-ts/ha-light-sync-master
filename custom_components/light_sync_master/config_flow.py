@@ -15,10 +15,12 @@ import homeassistant.helpers.config_validation as cv
 from .const import (
     CONF_ENABLE_DEBUG_LOGGING,
     CONF_MASTER_NAME,
+    CONF_PER_AREA_TOGGLES,
     CONF_SLAVE_ENTITIES,
     CONF_SYNC_ENABLED_DEFAULT,
     CONF_SYNC_ON_ENABLE,
     CONF_TRANSITION_TIME,
+    DEFAULT_PER_AREA_TOGGLES,
     DEFAULT_SYNC_ENABLED,
     DEFAULT_SYNC_ON_ENABLE,
     DEFAULT_TRANSITION_TIME,
@@ -83,6 +85,7 @@ class LightSyncMasterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_TRANSITION_TIME: DEFAULT_TRANSITION_TIME,
                     CONF_SYNC_ENABLED_DEFAULT: DEFAULT_SYNC_ENABLED,
                     CONF_SYNC_ON_ENABLE: DEFAULT_SYNC_ON_ENABLE,
+                    CONF_PER_AREA_TOGGLES: DEFAULT_PER_AREA_TOGGLES,
                     CONF_ENABLE_DEBUG_LOGGING: False,
                 },
             )
@@ -125,15 +128,19 @@ class LightSyncMasterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
-        return LightSyncMasterOptionsFlow(config_entry)
+        return LightSyncMasterOptionsFlow()
 
 
-class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow."""
+class LightSyncMasterOptionsFlow(config_entries.OptionsFlowWithReload):
+    """Handle options flow.
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
+    Inherits ``OptionsFlowWithReload`` so changing options automatically reloads
+    the entry (rebuilding slaves and the per-area switches) with no manual reload.
+
+    Do not store ``config_entry`` here: since HA 2024.11 ``OptionsFlow`` exposes
+    it as a read-only property, so assigning ``self.config_entry`` raises
+    ``AttributeError`` on HA 2026.x and broke the whole options page.
+    """
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -151,7 +158,8 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # update config entry data
+            # update the slave list (stored in entry.data) and reload so the
+            # coordinator and the per-area switches are rebuilt
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 data={
@@ -159,7 +167,13 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
                     CONF_SLAVE_ENTITIES: user_input[CONF_SLAVE_ENTITIES],
                 },
             )
-            return self.async_create_entry(title="", data={})
+            self.hass.config_entries.async_schedule_reload(
+                self.config_entry.entry_id
+            )
+            # keep existing options untouched (returning data={} would wipe them)
+            return self.async_create_entry(
+                title="", data=dict(self.config_entry.options)
+            )
 
         # get current slaves
         current_slaves = self.config_entry.data.get(CONF_SLAVE_ENTITIES, [])
@@ -190,8 +204,11 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # update options
-            return self.async_create_entry(title="", data=user_input)
+            # merge with existing options so the advanced step's values survive
+            return self.async_create_entry(
+                title="",
+                data={**dict(self.config_entry.options), **user_input},
+            )
 
         return self.async_show_form(
             step_id="behavior",
@@ -210,6 +227,13 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
                         DEFAULT_SYNC_ON_ENABLE
                     )
                 ): cv.boolean,
+                vol.Required(
+                    CONF_PER_AREA_TOGGLES,
+                    default=(self.config_entry.options or {}).get(
+                        CONF_PER_AREA_TOGGLES,
+                        DEFAULT_PER_AREA_TOGGLES
+                    )
+                ): cv.boolean,
             }),
             errors=errors,
         )
@@ -225,8 +249,11 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlow):
             if not 0.0 <= user_input[CONF_TRANSITION_TIME] <= 10.0:
                 errors[CONF_TRANSITION_TIME] = "invalid_transition_time"
             else:
-                # update options
-                return self.async_create_entry(title="", data=user_input)
+                # merge with existing options so the behavior step's values survive
+                return self.async_create_entry(
+                    title="",
+                    data={**dict(self.config_entry.options), **user_input},
+                )
 
         return self.async_show_form(
             step_id="advanced",

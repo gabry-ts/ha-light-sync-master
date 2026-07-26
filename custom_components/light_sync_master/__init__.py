@@ -21,16 +21,24 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
 )
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
     CONF_MASTER_NAME,
+    CONF_PER_AREA_TOGGLES,
     CONF_SLAVE_ENTITIES,
     CONF_SYNC_ON_ENABLE,
     CONF_TRANSITION_TIME,
+    DEFAULT_PER_AREA_TOGGLES,
     DEFAULT_SYNC_ON_ENABLE,
     DEFAULT_TRANSITION_TIME,
     DOMAIN,
+    FOLLOW_SWITCH_INFIX,
     LIGHT_PREFIX,
     SWITCH_PREFIX,
 )
@@ -131,6 +139,86 @@ class LightSyncCoordinator:
 
         return True
 
+    # ------------------------------------------------------------------
+    # Per-area "follow master" support
+    # ------------------------------------------------------------------
+
+    def _per_area_enabled(self) -> bool:
+        """Return whether the per-area follow toggles feature is enabled."""
+        return (self.entry.options or {}).get(
+            CONF_PER_AREA_TOGGLES, DEFAULT_PER_AREA_TOGGLES
+        )
+
+    def area_id_for_entity(self, entity_id: str) -> str | None:
+        """Resolve the area of an entity (entity area, else its device area)."""
+        ent_reg = er.async_get(self.hass)
+        entry = ent_reg.async_get(entity_id)
+        if entry is None:
+            return None
+        if entry.area_id:
+            return entry.area_id
+        if entry.device_id:
+            device = dr.async_get(self.hass).async_get(entry.device_id)
+            if device and device.area_id:
+                return device.area_id
+        return None
+
+    def get_area_map(self) -> dict[str, dict[str, Any]]:
+        """Group configured slaves by area id.
+
+        Returns ``{area_id: {"name": <area name>, "slaves": [entity_id, ...]}}``
+        for every area that owns at least one slave. Slaves without an area are
+        omitted (they always follow the master).
+        """
+        area_reg = ar.async_get(self.hass)
+        result: dict[str, dict[str, Any]] = {}
+        for slave in self.entry.data.get(CONF_SLAVE_ENTITIES, []):
+            area_id = self.area_id_for_entity(slave)
+            if not area_id:
+                continue
+            if area_id not in result:
+                area = area_reg.async_get_area(area_id)
+                result[area_id] = {
+                    "name": area.name if area else area_id,
+                    "slaves": [],
+                }
+            result[area_id]["slaves"].append(slave)
+        return result
+
+    def follow_switch_entity_id(self, area_id: str) -> str:
+        """Build the deterministic entity id of an area follow switch."""
+        return f"{self.switch_entity_id}_{FOLLOW_SWITCH_INFIX}_{area_id}"
+
+    def _slave_follows_master(self, slave_entity_id: str) -> bool:
+        """Return True if this slave should currently follow the master.
+
+        A slave is detached only when the feature is on, the slave belongs to an
+        area, and that area's follow switch exists and is off. Anything missing
+        defaults to following (backward compatible).
+        """
+        if not self._per_area_enabled():
+            return True
+        area_id = self.area_id_for_entity(slave_entity_id)
+        if not area_id:
+            return True
+        follow_state = self.hass.states.get(self.follow_switch_entity_id(area_id))
+        if follow_state is None:
+            return True
+        return follow_state.state == STATE_ON
+
+    async def async_sync_area(self, area_id: str) -> None:
+        """Re-sync every ON slave of an area to the master (follow re-enabled)."""
+        # respect the global sync switch
+        sync_switch_state = self.hass.states.get(self.switch_entity_id)
+        if sync_switch_state is None or sync_switch_state.state != STATE_ON:
+            return
+        for slave in self.entry.data.get(CONF_SLAVE_ENTITIES, []):
+            if self.area_id_for_entity(slave) != area_id:
+                continue
+            slave_state = self.hass.states.get(slave)
+            if slave_state is not None and slave_state.state == STATE_ON:
+                await self._sync_slave(slave)
+
     @callback
     def _handle_master_state_change(self, event: Event) -> None:
         """Handle master light state changes."""
@@ -178,6 +266,15 @@ class LightSyncCoordinator:
             return
 
         slave_entity_id = new_state.entity_id
+
+        # respect the per-area follow toggle for this slave
+        if not self._slave_follows_master(slave_entity_id):
+            _LOGGER.debug(
+                "Slave light %s is detached from master (area toggle off), "
+                "skipping turn-on sync",
+                slave_entity_id
+            )
+            return
 
         _LOGGER.debug(
             "Slave light %s turned on, syncing master state",
@@ -242,6 +339,14 @@ class LightSyncCoordinator:
             if slave_state.state == STATE_UNAVAILABLE:
                 _LOGGER.warning(
                     "Slave light %s is unavailable, skipping sync",
+                    slave_entity_id
+                )
+                continue
+
+            if not self._slave_follows_master(slave_entity_id):
+                _LOGGER.debug(
+                    "Slave light %s is detached from master (area toggle off), "
+                    "skipping sync",
                     slave_entity_id
                 )
                 continue
