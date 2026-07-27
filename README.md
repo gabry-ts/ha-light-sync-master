@@ -160,6 +160,12 @@ logger:
 - No bidirectional sync (slave → master)
 - No per-slave attribute selection
 
+### Entertainment / streaming lights (e.g. Hue HDMI Sync Box)
+
+Lights driven by a streaming/entertainment source (such as the Philips Hue Play HDMI Sync Box) cannot be synced. While syncing, Hue streams colors straight to the bulbs and does not update the regular light state that Home Assistant reads (HA usually reports the bulb as `off`), so there is no state change for Light Sync Master to react to.
+
+It also cannot be used to get around the 10 light entertainment limit: mirroring happens through `light.turn_on` service calls, which cannot match a real time video stream's update rate (you would get lag and flicker). For more than 10 lights reacting to a screen in real time, use something that reads the video signal directly (for example Hyperion with LED strips). See [#11](https://github.com/gabry-ts/ha-light-sync-master/issues/11).
+
 ## Contributing
 
 Contributions welcome! Fork, branch, and submit a PR.
