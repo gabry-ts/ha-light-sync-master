@@ -13,14 +13,29 @@ from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
+    BRIGHTNESS_MODE_CAP,
+    BRIGHTNESS_MODE_FOLLOW,
+    BRIGHTNESS_MODE_SCALE,
+    CONF_AREA_CONFIG,
+    CONF_AREA_ID,
+    CONF_BRIGHTNESS_MODE,
+    CONF_BRIGHTNESS_VALUE,
     CONF_ENABLE_DEBUG_LOGGING,
     CONF_MASTER_NAME,
     CONF_PER_AREA_TOGGLES,
     CONF_SLAVE_ENTITIES,
+    CONF_SYNC_BRIGHTNESS,
+    CONF_SYNC_COLOR,
+    CONF_SYNC_COLOR_TEMP,
     CONF_SYNC_ENABLED_DEFAULT,
     CONF_SYNC_ON_ENABLE,
     CONF_TRANSITION_TIME,
+    DEFAULT_BRIGHTNESS_MODE,
+    DEFAULT_BRIGHTNESS_VALUE,
     DEFAULT_PER_AREA_TOGGLES,
+    DEFAULT_SYNC_BRIGHTNESS,
+    DEFAULT_SYNC_COLOR,
+    DEFAULT_SYNC_COLOR_TEMP,
     DEFAULT_SYNC_ENABLED,
     DEFAULT_SYNC_ON_ENABLE,
     DEFAULT_TRANSITION_TIME,
@@ -148,7 +163,7 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlowWithReload):
         """Manage options - show menu."""
         return self.async_show_menu(
             step_id="init",
-            menu_options=["modify_slaves", "behavior", "advanced"],
+            menu_options=["modify_slaves", "behavior", "areas", "advanced"],
         )
 
     async def async_step_modify_slaves(
@@ -236,6 +251,105 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlowWithReload):
                 ): cv.boolean,
             }),
             errors=errors,
+        )
+
+    async def async_step_areas(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Pick which area to configure for per-area sync."""
+        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+        area_map = coordinator.get_area_map()
+
+        if not area_map:
+            return self.async_abort(reason="no_areas")
+
+        if user_input is not None:
+            self._area_id = user_input[CONF_AREA_ID]
+            return await self.async_step_area_config()
+
+        options = [
+            {"value": area_id, "label": info["name"]}
+            for area_id, info in sorted(
+                area_map.items(), key=lambda kv: kv[1]["name"]
+            )
+        ]
+        return self.async_show_form(
+            step_id="areas",
+            data_schema=vol.Schema({
+                vol.Required(CONF_AREA_ID): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+        )
+
+    async def async_step_area_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.FlowResult:
+        """Configure per-area sync (which attributes + brightness mode)."""
+        area_id = getattr(self, "_area_id", None)
+        coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id]
+        area_name = coordinator.get_area_map().get(area_id, {}).get("name", area_id)
+        current = (
+            (self.config_entry.options or {}).get(CONF_AREA_CONFIG) or {}
+        ).get(area_id, {})
+
+        if user_input is not None:
+            area_config = dict(
+                (self.config_entry.options or {}).get(CONF_AREA_CONFIG) or {}
+            )
+            area_config[area_id] = {
+                CONF_SYNC_BRIGHTNESS: user_input[CONF_SYNC_BRIGHTNESS],
+                CONF_SYNC_COLOR: user_input[CONF_SYNC_COLOR],
+                CONF_SYNC_COLOR_TEMP: user_input[CONF_SYNC_COLOR_TEMP],
+                CONF_BRIGHTNESS_MODE: user_input[CONF_BRIGHTNESS_MODE],
+                CONF_BRIGHTNESS_VALUE: int(user_input[CONF_BRIGHTNESS_VALUE]),
+            }
+            return self.async_create_entry(
+                title="",
+                data={
+                    **dict(self.config_entry.options),
+                    CONF_AREA_CONFIG: area_config,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="area_config",
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_SYNC_BRIGHTNESS,
+                    default=current.get(CONF_SYNC_BRIGHTNESS, DEFAULT_SYNC_BRIGHTNESS),
+                ): cv.boolean,
+                vol.Required(
+                    CONF_SYNC_COLOR,
+                    default=current.get(CONF_SYNC_COLOR, DEFAULT_SYNC_COLOR),
+                ): cv.boolean,
+                vol.Required(
+                    CONF_SYNC_COLOR_TEMP,
+                    default=current.get(CONF_SYNC_COLOR_TEMP, DEFAULT_SYNC_COLOR_TEMP),
+                ): cv.boolean,
+                vol.Required(
+                    CONF_BRIGHTNESS_MODE,
+                    default=current.get(CONF_BRIGHTNESS_MODE, DEFAULT_BRIGHTNESS_MODE),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            BRIGHTNESS_MODE_FOLLOW,
+                            BRIGHTNESS_MODE_SCALE,
+                            BRIGHTNESS_MODE_CAP,
+                        ],
+                        translation_key="brightness_mode",
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_BRIGHTNESS_VALUE,
+                    default=current.get(CONF_BRIGHTNESS_VALUE, DEFAULT_BRIGHTNESS_VALUE),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+            }),
+            description_placeholders={"area": area_name},
         )
 
     async def async_step_advanced(

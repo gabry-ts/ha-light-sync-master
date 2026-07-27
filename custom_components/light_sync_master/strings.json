@@ -38,7 +38,8 @@
         "menu_options": {
           "modify_slaves": "Modify Slave Lights",
           "behavior": "Sync Behavior Settings",
-          "advanced": "Advanced Options"
+          "advanced": "Advanced Options",
+          "areas": "Per-Area Sync"
         }
       },
       "modify_slaves": {
@@ -74,16 +75,49 @@
           "transition_time": "Time for smooth color/brightness transitions (0 = instant, max 10 seconds)",
           "enable_debug_logging": "Enable detailed debug logs for troubleshooting"
         }
+      },
+      "areas": {
+        "title": "Per-Area Sync",
+        "description": "Pick an area to configure how it follows the master.",
+        "data": {
+          "area_id": "Area"
+        }
+      },
+      "area_config": {
+        "title": "Area: {area}",
+        "description": "Choose what {area} follows and how its brightness behaves.",
+        "data": {
+          "sync_brightness": "Follow brightness",
+          "sync_color": "Follow color",
+          "sync_color_temp": "Follow color temperature",
+          "brightness_mode": "Brightness mode",
+          "brightness_value": "Brightness value (%)"
+        },
+        "data_description": {
+          "brightness_value": "Used for Scale (percent of master) and Limit (max percent). Ignored for Follow."
+        }
       }
     },
     "error": {
       "invalid_transition_time": "Transition time must be between 0 and 10 seconds"
+    },
+    "abort": {
+      "no_areas": "No areas with slave lights to configure. Assign areas to your slave lights first."
     }
   },
   "entity": {
     "switch": {
       "sync_enabled": {
         "name": "{name} Sync"
+      }
+    }
+  },
+  "selector": {
+    "brightness_mode": {
+      "options": {
+        "follow": "Follow master",
+        "scale": "Scale (% of master)",
+        "cap": "Limit (max %)"
       }
     }
   }

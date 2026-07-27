@@ -38,7 +38,8 @@
         "menu_options": {
           "modify_slaves": "Modifica Luci Slave",
           "behavior": "Impostazioni Comportamento Sincronizzazione",
-          "advanced": "Opzioni Avanzate"
+          "advanced": "Opzioni Avanzate",
+          "areas": "Sync per stanza"
         }
       },
       "modify_slaves": {
@@ -74,16 +75,49 @@
           "transition_time": "Tempo per transizioni fluide di colore/luminosità (0 = istantaneo, max 10 secondi)",
           "enable_debug_logging": "Abilita log di debug dettagliati per la risoluzione dei problemi"
         }
+      },
+      "areas": {
+        "title": "Sync per stanza",
+        "description": "Scegli una stanza da configurare.",
+        "data": {
+          "area_id": "Stanza"
+        }
+      },
+      "area_config": {
+        "title": "Stanza: {area}",
+        "description": "Scegli cosa segue la stanza {area} e come si comporta la luminosità.",
+        "data": {
+          "sync_brightness": "Segui luminosità",
+          "sync_color": "Segui colore",
+          "sync_color_temp": "Segui temperatura colore",
+          "brightness_mode": "Modalità luminosità",
+          "brightness_value": "Valore luminosità (%)"
+        },
+        "data_description": {
+          "brightness_value": "Usato per Scala (percento del master) e Limite (massimo percento). Ignorato per Segui."
+        }
       }
     },
     "error": {
       "invalid_transition_time": "Il tempo di transizione deve essere compreso tra 0 e 10 secondi"
+    },
+    "abort": {
+      "no_areas": "Nessuna stanza con luci slave da configurare. Assegna prima le aree alle luci slave."
     }
   },
   "entity": {
     "switch": {
       "sync_enabled": {
         "name": "Sincronizzazione {name}"
+      }
+    }
+  },
+  "selector": {
+    "brightness_mode": {
+      "options": {
+        "follow": "Segui master",
+        "scale": "Scala (% del master)",
+        "cap": "Limite (max %)"
       }
     }
   }

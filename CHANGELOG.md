@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-07-27
+
+### Added
+- Per-area sync configuration (Options → "Per-Area Sync"): for each area choose whether it follows the master's brightness, color and color temperature independently.
+- Per-area brightness mode: **Follow** (same as master), **Scale** (a percentage of the master's brightness) or **Limit** (cap at a maximum percentage). Great for keeping one room dimmer, e.g. a screen bias light capped low.
+
+### Changed
+- Color is now synced based on the master's active `color_mode` and guards against `None` color values, avoiding pushing empty color attributes to slaves.
+
+[1.3.0]: https://github.com/gabry-ts/ha-light-sync-master/releases/tag/v1.3.0
+
 ## [1.2.0] - 2026-07-26
 
 ### Added

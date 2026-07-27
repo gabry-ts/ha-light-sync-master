@@ -6,11 +6,13 @@ from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
+    ATTR_COLOR_MODE,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_HS_COLOR,
     ATTR_RGB_COLOR,
     ATTR_TRANSITION,
     ATTR_XY_COLOR,
+    ColorMode,
     DOMAIN as LIGHT_DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -29,12 +31,25 @@ from homeassistant.helpers import (
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
+    BRIGHTNESS_MODE_CAP,
+    BRIGHTNESS_MODE_SCALE,
+    CONF_AREA_CONFIG,
+    CONF_BRIGHTNESS_MODE,
+    CONF_BRIGHTNESS_VALUE,
     CONF_MASTER_NAME,
     CONF_PER_AREA_TOGGLES,
     CONF_SLAVE_ENTITIES,
+    CONF_SYNC_BRIGHTNESS,
+    CONF_SYNC_COLOR,
+    CONF_SYNC_COLOR_TEMP,
     CONF_SYNC_ON_ENABLE,
     CONF_TRANSITION_TIME,
+    DEFAULT_BRIGHTNESS_MODE,
+    DEFAULT_BRIGHTNESS_VALUE,
     DEFAULT_PER_AREA_TOGGLES,
+    DEFAULT_SYNC_BRIGHTNESS,
+    DEFAULT_SYNC_COLOR,
+    DEFAULT_SYNC_COLOR_TEMP,
     DEFAULT_SYNC_ON_ENABLE,
     DEFAULT_TRANSITION_TIME,
     DOMAIN,
@@ -372,9 +387,18 @@ class LightSyncCoordinator:
             )
             return
 
-        # build service data from master state
-        service_data = self._build_sync_service_data(master_state)
+        # build service data from master state, applying this slave's area config
+        area_cfg = self._area_sync_config(self.area_id_for_entity(slave_entity_id))
+        service_data = self._build_sync_service_data(master_state, area_cfg)
         service_data[ATTR_ENTITY_ID] = slave_entity_id
+
+        # if the area masks out every synced attribute there is nothing to send
+        if len(service_data) <= 2:  # only transition + entity_id
+            _LOGGER.debug(
+                "Slave %s: nothing to sync for its area config, skipping",
+                slave_entity_id
+            )
+            return
 
         try:
             await self.hass.services.async_call(
@@ -395,9 +419,44 @@ class LightSyncCoordinator:
                 exc
             )
 
-    def _build_sync_service_data(self, master_state) -> dict[str, Any]:
-        """Build service data from master state."""
-        service_data = {}
+    def _area_sync_config(self, area_id: str | None) -> dict[str, Any]:
+        """Return the per-area sync config (with defaults) for an area."""
+        cfg = ((self.entry.options or {}).get(CONF_AREA_CONFIG) or {}).get(
+            area_id or "", {}
+        )
+        return {
+            CONF_SYNC_BRIGHTNESS: cfg.get(CONF_SYNC_BRIGHTNESS, DEFAULT_SYNC_BRIGHTNESS),
+            CONF_SYNC_COLOR: cfg.get(CONF_SYNC_COLOR, DEFAULT_SYNC_COLOR),
+            CONF_SYNC_COLOR_TEMP: cfg.get(
+                CONF_SYNC_COLOR_TEMP, DEFAULT_SYNC_COLOR_TEMP
+            ),
+            CONF_BRIGHTNESS_MODE: cfg.get(
+                CONF_BRIGHTNESS_MODE, DEFAULT_BRIGHTNESS_MODE
+            ),
+            CONF_BRIGHTNESS_VALUE: cfg.get(
+                CONF_BRIGHTNESS_VALUE, DEFAULT_BRIGHTNESS_VALUE
+            ),
+        }
+
+    @staticmethod
+    def _apply_brightness(master_brightness: int, area_cfg: dict[str, Any]) -> int:
+        """Apply the area brightness mode (follow / scale / cap) to a value."""
+        mode = area_cfg[CONF_BRIGHTNESS_MODE]
+        value = area_cfg[CONF_BRIGHTNESS_VALUE]
+        if mode == BRIGHTNESS_MODE_SCALE:
+            result = master_brightness * value / 100
+        elif mode == BRIGHTNESS_MODE_CAP:
+            result = min(master_brightness, 255 * value / 100)
+        else:
+            result = master_brightness
+        # keep it a valid, non-zero brightness so the slave stays on
+        return max(1, min(255, round(result)))
+
+    def _build_sync_service_data(
+        self, master_state, area_cfg: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build light.turn_on data from master state, filtered by area config."""
+        service_data: dict[str, Any] = {}
 
         # get transition time from options
         transition_time = (self.entry.options or {}).get(
@@ -406,19 +465,28 @@ class LightSyncCoordinator:
         )
         service_data[ATTR_TRANSITION] = transition_time
 
-        # copy brightness
-        if ATTR_BRIGHTNESS in master_state.attributes:
-            service_data[ATTR_BRIGHTNESS] = master_state.attributes[ATTR_BRIGHTNESS]
+        attrs = master_state.attributes
 
-        # copy color attributes (only one will be used)
-        if ATTR_RGB_COLOR in master_state.attributes:
-            service_data[ATTR_RGB_COLOR] = master_state.attributes[ATTR_RGB_COLOR]
-        elif ATTR_HS_COLOR in master_state.attributes:
-            service_data[ATTR_HS_COLOR] = master_state.attributes[ATTR_HS_COLOR]
-        elif ATTR_XY_COLOR in master_state.attributes:
-            service_data[ATTR_XY_COLOR] = master_state.attributes[ATTR_XY_COLOR]
-        elif ATTR_COLOR_TEMP_KELVIN in master_state.attributes:
-            service_data[ATTR_COLOR_TEMP_KELVIN] = master_state.attributes[ATTR_COLOR_TEMP_KELVIN]
+        # brightness (with optional scale/cap)
+        if area_cfg[CONF_SYNC_BRIGHTNESS]:
+            brightness = attrs.get(ATTR_BRIGHTNESS)
+            if brightness is not None:
+                service_data[ATTR_BRIGHTNESS] = self._apply_brightness(
+                    brightness, area_cfg
+                )
+
+        # color: driven by the master's active color mode, gated per area.
+        # Guard on value (not key), since the inactive color attrs are None.
+        if attrs.get(ATTR_COLOR_MODE) == ColorMode.COLOR_TEMP:
+            if area_cfg[CONF_SYNC_COLOR_TEMP] and attrs.get(ATTR_COLOR_TEMP_KELVIN) is not None:
+                service_data[ATTR_COLOR_TEMP_KELVIN] = attrs[ATTR_COLOR_TEMP_KELVIN]
+        elif area_cfg[CONF_SYNC_COLOR]:
+            if attrs.get(ATTR_RGB_COLOR) is not None:
+                service_data[ATTR_RGB_COLOR] = attrs[ATTR_RGB_COLOR]
+            elif attrs.get(ATTR_HS_COLOR) is not None:
+                service_data[ATTR_HS_COLOR] = attrs[ATTR_HS_COLOR]
+            elif attrs.get(ATTR_XY_COLOR) is not None:
+                service_data[ATTR_XY_COLOR] = attrs[ATTR_XY_COLOR]
 
         return service_data
 
