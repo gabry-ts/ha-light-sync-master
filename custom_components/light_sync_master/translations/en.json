@@ -57,12 +57,16 @@
         "data": {
           "sync_enabled_default": "Default sync state on restart",
           "sync_on_enable": "Immediately sync all ON slaves when sync is enabled",
-          "per_area_toggles": "Create a per-area \"follow master\" switch"
+          "per_area_toggles": "Create a per-area \"follow master\" switch",
+          "reactivate_enabled": "Re-enable all \"follow master\" switches daily",
+          "reactivate_time": "Reactivation time"
         },
         "data_description": {
           "sync_enabled_default": "Enable synchronization by default when Home Assistant restarts",
           "sync_on_enable": "When turning on the sync switch, immediately update all ON slaves to match the master",
-          "per_area_toggles": "Adds one switch per area so each room can be detached from the master while staying on"
+          "per_area_toggles": "Adds one switch per area so each room can be detached from the master while staying on",
+          "reactivate_enabled": "Every day at the chosen time, all per-area \"follow master\" switches are turned back on (requires the per-area switches)",
+          "reactivate_time": "Time of day to turn all per-area switches back on"
         }
       },
       "advanced": {

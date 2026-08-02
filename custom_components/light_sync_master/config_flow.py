@@ -23,6 +23,8 @@ from .const import (
     CONF_ENABLE_DEBUG_LOGGING,
     CONF_MASTER_NAME,
     CONF_PER_AREA_TOGGLES,
+    CONF_REACTIVATE_ENABLED,
+    CONF_REACTIVATE_TIME,
     CONF_SLAVE_ENTITIES,
     CONF_SYNC_BRIGHTNESS,
     CONF_SYNC_COLOR,
@@ -33,6 +35,8 @@ from .const import (
     DEFAULT_BRIGHTNESS_MODE,
     DEFAULT_BRIGHTNESS_VALUE,
     DEFAULT_PER_AREA_TOGGLES,
+    DEFAULT_REACTIVATE_ENABLED,
+    DEFAULT_REACTIVATE_TIME,
     DEFAULT_SYNC_BRIGHTNESS,
     DEFAULT_SYNC_COLOR,
     DEFAULT_SYNC_COLOR_TEMP,
@@ -101,6 +105,8 @@ class LightSyncMasterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_SYNC_ENABLED_DEFAULT: DEFAULT_SYNC_ENABLED,
                     CONF_SYNC_ON_ENABLE: DEFAULT_SYNC_ON_ENABLE,
                     CONF_PER_AREA_TOGGLES: DEFAULT_PER_AREA_TOGGLES,
+                    CONF_REACTIVATE_ENABLED: DEFAULT_REACTIVATE_ENABLED,
+                    CONF_REACTIVATE_TIME: DEFAULT_REACTIVATE_TIME,
                     CONF_ENABLE_DEBUG_LOGGING: False,
                 },
             )
@@ -249,6 +255,20 @@ class LightSyncMasterOptionsFlow(config_entries.OptionsFlowWithReload):
                         DEFAULT_PER_AREA_TOGGLES
                     )
                 ): cv.boolean,
+                vol.Required(
+                    CONF_REACTIVATE_ENABLED,
+                    default=(self.config_entry.options or {}).get(
+                        CONF_REACTIVATE_ENABLED,
+                        DEFAULT_REACTIVATE_ENABLED
+                    )
+                ): cv.boolean,
+                vol.Required(
+                    CONF_REACTIVATE_TIME,
+                    default=(self.config_entry.options or {}).get(
+                        CONF_REACTIVATE_TIME,
+                        DEFAULT_REACTIVATE_TIME
+                    )
+                ): selector.TimeSelector(),
             }),
             errors=errors,
         )

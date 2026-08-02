@@ -12,6 +12,11 @@ CONF_SYNC_ON_ENABLE: Final = "sync_on_enable"
 CONF_ENABLE_DEBUG_LOGGING: Final = "enable_debug_logging"
 CONF_PER_AREA_TOGGLES: Final = "per_area_toggles"
 
+# optional daily re-activation of all per-area "follow master" switches:
+# at CONF_REACTIVATE_TIME every day, every area follow switch is turned back on
+CONF_REACTIVATE_ENABLED: Final = "reactivate_enabled"
+CONF_REACTIVATE_TIME: Final = "reactivate_time"
+
 # per-area sync configuration (stored in options under CONF_AREA_CONFIG as
 # {area_id: {sync_brightness, sync_color, sync_color_temp,
 #            brightness_mode, brightness_value}})
@@ -33,6 +38,8 @@ DEFAULT_TRANSITION_TIME: Final = 1.0
 DEFAULT_SYNC_ENABLED: Final = True
 DEFAULT_SYNC_ON_ENABLE: Final = True
 DEFAULT_PER_AREA_TOGGLES: Final = True
+DEFAULT_REACTIVATE_ENABLED: Final = False
+DEFAULT_REACTIVATE_TIME: Final = "06:00:00"
 DEFAULT_SYNC_BRIGHTNESS: Final = True
 DEFAULT_SYNC_COLOR: Final = True
 DEFAULT_SYNC_COLOR_TEMP: Final = True

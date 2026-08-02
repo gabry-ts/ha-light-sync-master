@@ -28,7 +28,10 @@ from homeassistant.helpers import (
     device_registry as dr,
     entity_registry as er,
 )
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_change,
+)
 
 from .const import (
     BRIGHTNESS_MODE_CAP,
@@ -38,6 +41,8 @@ from .const import (
     CONF_BRIGHTNESS_VALUE,
     CONF_MASTER_NAME,
     CONF_PER_AREA_TOGGLES,
+    CONF_REACTIVATE_ENABLED,
+    CONF_REACTIVATE_TIME,
     CONF_SLAVE_ENTITIES,
     CONF_SYNC_BRIGHTNESS,
     CONF_SYNC_COLOR,
@@ -47,6 +52,8 @@ from .const import (
     DEFAULT_BRIGHTNESS_MODE,
     DEFAULT_BRIGHTNESS_VALUE,
     DEFAULT_PER_AREA_TOGGLES,
+    DEFAULT_REACTIVATE_ENABLED,
+    DEFAULT_REACTIVATE_TIME,
     DEFAULT_SYNC_BRIGHTNESS,
     DEFAULT_SYNC_COLOR,
     DEFAULT_SYNC_COLOR_TEMP,
@@ -118,6 +125,7 @@ class LightSyncCoordinator:
         self.entry = entry
         self._unsub_master = None
         self._unsub_slaves = []
+        self._unsub_reactivate = None
 
         # build entity IDs
         name = entry.data[CONF_MASTER_NAME]
@@ -146,6 +154,9 @@ class LightSyncCoordinator:
             )
             self._unsub_slaves.append(unsub)
 
+        # optional daily re-activation of all per-area follow switches
+        self._setup_reactivation()
+
         _LOGGER.info(
             "Coordinator setup complete: master=%s, slaves=%d",
             self.master_entity_id,
@@ -153,6 +164,70 @@ class LightSyncCoordinator:
         )
 
         return True
+
+    # ------------------------------------------------------------------
+    # Optional daily re-activation of the per-area follow switches
+    # ------------------------------------------------------------------
+
+    def _setup_reactivation(self) -> None:
+        """Schedule turning every area follow switch back on at a daily time.
+
+        No-op unless the per-area toggles feature and the re-activation option
+        are both enabled. The entry is reloaded on any option change, so this is
+        re-evaluated automatically when the user edits the schedule.
+        """
+        if not self._per_area_enabled():
+            return
+
+        options = self.entry.options or {}
+        if not options.get(CONF_REACTIVATE_ENABLED, DEFAULT_REACTIVATE_ENABLED):
+            return
+
+        time_str = options.get(CONF_REACTIVATE_TIME, DEFAULT_REACTIVATE_TIME)
+        try:
+            parts = [int(p) for p in str(time_str).split(":")]
+            hour, minute = parts[0], parts[1]
+            second = parts[2] if len(parts) > 2 else 0
+        except (ValueError, IndexError):
+            _LOGGER.warning(
+                "Invalid reactivate time %r, follow-switch reactivation disabled",
+                time_str,
+            )
+            return
+
+        self._unsub_reactivate = async_track_time_change(
+            self.hass,
+            self._handle_reactivation,
+            hour=hour,
+            minute=minute,
+            second=second,
+        )
+        _LOGGER.info(
+            "Scheduled daily follow-switch reactivation at %02d:%02d:%02d",
+            hour,
+            minute,
+            second,
+        )
+
+    @callback
+    def _handle_reactivation(self, now) -> None:
+        """Fire the re-activation of all area follow switches."""
+        self.hass.async_create_task(self._async_reactivate_all_areas())
+
+    async def _async_reactivate_all_areas(self) -> None:
+        """Turn every area follow switch that is currently off back on."""
+        _LOGGER.info("Reactivating all area follow switches (scheduled)")
+        for area_id in self.get_area_map():
+            entity_id = self.follow_switch_entity_id(area_id)
+            state = self.hass.states.get(entity_id)
+            if state is None or state.state == STATE_ON:
+                continue
+            await self.hass.services.async_call(
+                "switch",
+                SERVICE_TURN_ON,
+                {ATTR_ENTITY_ID: entity_id},
+                blocking=False,
+            )
 
     # ------------------------------------------------------------------
     # Per-area "follow master" support
@@ -505,5 +580,9 @@ class LightSyncCoordinator:
         for unsub in self._unsub_slaves:
             unsub()
         self._unsub_slaves.clear()
+
+        if self._unsub_reactivate:
+            self._unsub_reactivate()
+            self._unsub_reactivate = None
 
         _LOGGER.info("Coordinator cleanup complete for %s", self.master_entity_id)

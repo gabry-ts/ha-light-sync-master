@@ -57,12 +57,16 @@
         "data": {
           "sync_enabled_default": "Stato predefinito sincronizzazione al riavvio",
           "sync_on_enable": "Sincronizza immediatamente tutte le luci slave ON quando la sincronizzazione viene attivata",
-          "per_area_toggles": "Crea un interruttore \"segui master\" per ogni stanza"
+          "per_area_toggles": "Crea un interruttore \"segui master\" per ogni stanza",
+          "reactivate_enabled": "Riattiva ogni giorno tutti gli interruttori \"segui master\"",
+          "reactivate_time": "Orario di riattivazione"
         },
         "data_description": {
           "sync_enabled_default": "Abilita la sincronizzazione per impostazione predefinita quando Home Assistant si riavvia",
           "sync_on_enable": "Quando si attiva l'interruttore di sincronizzazione, aggiorna immediatamente tutte le luci slave accese per corrispondere al master",
-          "per_area_toggles": "Aggiunge un interruttore per ogni stanza, cosi puoi sganciare una stanza dal master lasciandola accesa"
+          "per_area_toggles": "Aggiunge un interruttore per ogni stanza, cosi puoi sganciare una stanza dal master lasciandola accesa",
+          "reactivate_enabled": "Ogni giorno, all'orario scelto, tutti gli interruttori \"segui master\" delle stanze vengono riaccesi (richiede gli interruttori per stanza)",
+          "reactivate_time": "Ora del giorno in cui riattivare tutti gli interruttori per stanza"
         }
       },
       "advanced": {

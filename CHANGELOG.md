@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-02
+
+### Added
+- Optional daily re-activation of all per-area "follow master" switches (Options → "Sync Behavior Settings"): enable it and pick a time, and every day at that hour every room's follow switch is turned back on (which also re-syncs each area to the master). Requires the per-area switches to be enabled.
+
+[1.4.0]: https://github.com/gabry-ts/ha-light-sync-master/releases/tag/v1.4.0
+
 ## [1.3.0] - 2026-07-27
 
 ### Added
